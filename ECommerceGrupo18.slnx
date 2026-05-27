@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Cart.API/Cart.API.csproj" Id="97174543-0081-440d-8f77-b2b87d68cf8f" />
+  <Project Path="Notifications.API/Notifications.API.csproj" Id="51c8ce5a-ce83-453f-8d1a-526f31471153" />
+  <Project Path="Orders.API/Orders.API.csproj" Id="250d4244-4cce-416d-a2c0-bd1cb5e8a136" />
+  <Project Path="Products.API/Products.API.csproj" Id="cf410692-c478-4c4e-95b1-c96d3b615b2b" />
+  <Project Path="Users.API/Users.API.csproj" Id="508b4ef1-dfe1-450f-9adc-34fbfb7bee17" />
+</Solution>
