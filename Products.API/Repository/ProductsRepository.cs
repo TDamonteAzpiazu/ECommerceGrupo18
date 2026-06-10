@@ -124,5 +124,13 @@ namespace Products.API.Repository
             });
             return count > 0;
         }
+
+        public async Task UpdateStockAsync(Guid id, int nuevoStock)
+        {
+            using var conn = CreateConnection();
+            await conn.ExecuteAsync(
+                "UPDATE products SET stock = @nuevoStock WHERE id = @id",
+                new { nuevoStock, id = id.ToString() });
+        }
     }
 }

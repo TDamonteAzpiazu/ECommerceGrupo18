@@ -94,5 +94,22 @@ namespace Users.API.Services
                 Email = user.Email
             };
         }
+
+        public async Task<RegisterResponse> GetByIdAsync(Guid id)
+        {
+            var user = await _repository.GetByIdAsync(id);
+            if (user == null)
+                throw new NotFoundException("USR-007", "Usuario no encontrado.");
+
+            return new RegisterResponse
+            {
+                Id = user.Id,
+                Nombre = user.Nombre,
+                Apellido = user.Apellido,
+                Email = user.Email,
+                FechaRegistro = user.FechaRegistro,
+                Activo = user.Activo
+            };
+        }
     }
 }

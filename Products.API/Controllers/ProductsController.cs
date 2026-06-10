@@ -66,5 +66,15 @@ namespace Products.API.Controllers
             await _service.DeleteAsync(id);
             return NoContent();
         }
+
+        [HttpPatch("{id}/stock")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> UpdateStock(Guid id, [FromBody] UpdateStockRequest request)
+        {
+            await _service.UpdateStockAsync(id, request.NuevoStock);
+            return Ok();
+        }
     }
 }

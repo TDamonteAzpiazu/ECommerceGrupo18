@@ -65,5 +65,26 @@ namespace Users.API.Repository
                 Id = user.Id.ToString()
             });
         }
+
+        public async Task<User?> GetByIdAsync(Guid id)
+        {
+            using var conn = CreateConnection();
+            var result = await conn.QuerySingleOrDefaultAsync(
+                "SELECT * FROM users WHERE id = @id", new { id = id.ToString() });
+
+            if (result == null) return null;
+
+            return new User
+            {
+                Id = Guid.Parse((string)result.id),
+                Nombre = (string)result.nombre,
+                Apellido = (string)result.apellido,
+                Email = (string)result.email,
+                PasswordHash = (string)result.password_hash,
+                FechaRegistro = DateTime.Parse((string)result.fecha_registro),
+                Activo = (long)result.activo == 1,
+                IntentosFallidos = (int)(long)result.intentos_fallidos
+            };
+        }
     }
 }

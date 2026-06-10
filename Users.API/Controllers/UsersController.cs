@@ -37,5 +37,15 @@ namespace Users.API.Controllers
             var result = await _service.LoginAsync(request);
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        [ProducesResponseType(typeof(RegisterResponse), 200)]
+        [ProducesResponseType(404)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> GetById(Guid id)
+        {
+            var result = await _service.GetByIdAsync(id);
+            return Ok(result);
+        }
     }
 }
