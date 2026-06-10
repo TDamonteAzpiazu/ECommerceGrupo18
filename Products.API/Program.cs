@@ -2,8 +2,36 @@ using Products.API.Data;
 using Products.API.ExceptionHandlers;
 using Products.API.Repository;
 using Products.API.Services;
+using Serilog;
+using Serilog.Events;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(le => le.Level >= LogEventLevel.Error)
+        .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"))
+    .WriteTo.Logger(lc => lc
+        .Filter.ByIncludingOnly(le =>
+        {
+            var esSerilogMiddleware = Serilog.Filters.Matching
+                .FromSource("Serilog.AspNetCore.RequestLoggingMiddleware")(le);
+            if (!esSerilogMiddleware) return false;
+            if (le.Properties.TryGetValue("RequestPath", out var p) &&
+                p is Serilog.Events.ScalarValue s && s.Value is string path)
+                return !path.Contains("/health") && !path.Contains("/swagger");
+            return true;
+        })
+        .WriteTo.File(
+            path: "logs/audit.log",
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {RequestMethod} | {RequestPath} | {StatusCode}{NewLine}",
+            rollingInterval: RollingInterval.Day))
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -36,7 +64,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSerilogRequestLogging(options =>
+{
+    options.GetLevel = (httpContext, _, ex) =>
+        ex != null ? LogEventLevel.Error :
+        httpContext.Request.Path.StartsWithSegments("/health")
+            ? LogEventLevel.Verbose : LogEventLevel.Information;
+});
+
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.MapControllers();
+Console.WriteLine("Swagger Products: https://localhost:7161/swagger");
 app.Run();
