@@ -1,13 +1,13 @@
 ﻿namespace Cart.API.Models
 {
-    public class Cart
+    public class ShoppingCart
     {
         public Guid UsuarioId { get; set; }
-        public List<CartItem> Items { get; set; } = new();
+        public List<ShoppingCartItem> Items { get; set; } = new();
         public DateTime FechaActualizacion { get; set; }
     }
 
-    public class CartItem
+    public class ShoppingCartItem
     {
         public Guid UsuarioId { get; set; }
         public Guid ProductoId { get; set; }
