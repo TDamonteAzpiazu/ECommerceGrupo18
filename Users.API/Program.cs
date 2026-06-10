@@ -13,6 +13,7 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserService>();
 
 // Exception handlers
+builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<BusinessRuleExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

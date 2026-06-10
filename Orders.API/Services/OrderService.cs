@@ -104,18 +104,55 @@ namespace Orders.API.Services
 
             // Validar transición de estado
             var validTransitions = new Dictionary<string, List<string>>
-            {
-                { "Pendiente",  new List<string> { "Confirmada", "Cancelada" } },
-                { "Confirmada", new List<string> { "Enviada", "Cancelada" } },
-                { "Enviada",    new List<string> { "Entregada" } },
-                { "Entregada",  new List<string>() },
-                { "Cancelada",  new List<string>() }
-            };
+    {
+        { "Pendiente",  new List<string> { "Confirmada", "Cancelada" } },
+        { "Confirmada", new List<string> { "Enviada", "Cancelada" } },
+        { "Enviada",    new List<string> { "Entregada" } },
+        { "Entregada",  new List<string>() },
+        { "Cancelada",  new List<string>() }
+    };
 
             if (!validTransitions.ContainsKey(existing.Estado) ||
                 !validTransitions[existing.Estado].Contains(request.Estado))
                 throw new BusinessRuleException("ORD-006",
                     $"Una orden en estado '{existing.Estado}' no puede volver a '{request.Estado}'.");
+
+            var client = _httpClientFactory.CreateClient();
+            var productsUrl = _config["Services:ProductsAPI"];
+
+            // Descontar stock al confirmar
+            if (request.Estado == "Confirmada")
+            {
+                foreach (var item in existing.Items)
+                {
+                    var productResponse = await client.GetAsync($"{productsUrl}/api/products/{item.ProductoId}");
+                    var productJson = await productResponse.Content.ReadAsStringAsync();
+                    var product = JsonSerializer.Deserialize<JsonElement>(productJson);
+                    var stockActual = product.GetProperty("stock").GetInt32();
+                    var nuevoStock = stockActual - item.Cantidad;
+
+                    await client.PatchAsJsonAsync(
+                        $"{productsUrl}/api/products/{item.ProductoId}/stock",
+                        new { nuevoStock });
+                }
+            }
+
+            // Devolver stock al cancelar
+            if (request.Estado == "Cancelada")
+            {
+                foreach (var item in existing.Items)
+                {
+                    var productResponse = await client.GetAsync($"{productsUrl}/api/products/{item.ProductoId}");
+                    var productJson = await productResponse.Content.ReadAsStringAsync();
+                    var product = JsonSerializer.Deserialize<JsonElement>(productJson);
+                    var stockActual = product.GetProperty("stock").GetInt32();
+                    var nuevoStock = stockActual + item.Cantidad;
+
+                    await client.PatchAsJsonAsync(
+                        $"{productsUrl}/api/products/{item.ProductoId}/stock",
+                        new { nuevoStock });
+                }
+            }
 
             var updated = await _repository.UpdateStatusAsync(id, request.Estado);
 
@@ -141,5 +178,10 @@ namespace Orders.API.Services
             Estado = order.Estado,
             FechaCreacion = order.FechaCreacion
         };
+
+        public async Task<bool> HasActiveOrdersForProductAsync(Guid productoId)
+        {
+            return await _repository.HasActiveOrdersForProductAsync(productoId);
+        }
     }
 }

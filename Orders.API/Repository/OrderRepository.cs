@@ -26,7 +26,19 @@ namespace Orders.API.Repository
             foreach (var o in orders)
             {
                 var order = MapOrder(o);
-                order.Items = (await GetItemsByOrderIdAsync(order.Id, conn)).ToList();
+                var items = await conn.QueryAsync(
+                    "SELECT * FROM order_items WHERE order_id = @orderId",
+                    new { orderId = order.Id.ToString() });
+
+                order.Items = items.Select(i => new OrderItem
+                {
+                    Id = Guid.Parse((string)i.id),
+                    OrderId = Guid.Parse((string)i.order_id),
+                    ProductoId = Guid.Parse((string)i.producto_id),
+                    Cantidad = (int)(long)i.cantidad,
+                    PrecioUnitario = (decimal)(double)i.precio_unitario
+                }).ToList();
+
                 result.Add(order);
             }
             return result;
@@ -41,7 +53,19 @@ namespace Orders.API.Repository
             if (result == null) return null;
 
             var order = MapOrder(result);
-            order.Items = (await GetItemsByOrderIdAsync(order.Id, conn)).ToList();
+            var items = await conn.QueryAsync(
+                "SELECT * FROM order_items WHERE order_id = @orderId",
+                new { orderId = order.Id.ToString() });
+
+            order.Items = items.Select(i => new OrderItem
+            {
+                Id = Guid.Parse((string)i.id),
+                OrderId = Guid.Parse((string)i.order_id),
+                ProductoId = Guid.Parse((string)i.producto_id),
+                Cantidad = (int)(long)i.cantidad,
+                PrecioUnitario = (decimal)(double)i.precio_unitario
+            }).ToList();
+
             return order;
         }
 
@@ -88,22 +112,6 @@ namespace Orders.API.Repository
             return await GetByIdAsync(id);
         }
 
-        private async Task<IEnumerable<OrderItem>> GetItemsByOrderIdAsync(Guid orderId, SqliteConnection conn)
-        {
-            var items = await conn.QueryAsync(
-                "SELECT * FROM order_items WHERE order_id = @orderId",
-                new { orderId = orderId.ToString() });
-
-            return items.Select(i => new OrderItem
-            {
-                Id = Guid.Parse((string)i.id),
-                OrderId = Guid.Parse((string)i.order_id),
-                ProductoId = Guid.Parse((string)i.producto_id),
-                Cantidad = (int)(long)i.cantidad,
-                PrecioUnitario = (decimal)(double)i.precio_unitario
-            });
-        }
-
         private Order MapOrder(dynamic o) => new()
         {
             Id = Guid.Parse((string)o.id),
@@ -112,5 +120,17 @@ namespace Orders.API.Repository
             Estado = (string)o.estado,
             FechaCreacion = DateTime.Parse((string)o.fecha_creacion)
         };
+
+        public async Task<bool> HasActiveOrdersForProductAsync(Guid productoId)
+        {
+            using var conn = CreateConnection();
+            var count = await conn.ExecuteScalarAsync<long>("""
+                    SELECT COUNT(*) FROM order_items oi
+                    INNER JOIN orders o ON o.id = oi.order_id
+                    WHERE oi.producto_id = @productoId
+                    AND o.estado IN ('Pendiente', 'Confirmada')
+            """, new { productoId = productoId.ToString() });
+            return count > 0;
+        }
     }
 }

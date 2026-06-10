@@ -9,6 +9,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// HttpClient para comunicación entre servicios
+builder.Services.AddHttpClient();
+
 // Repositorio y servicio
 builder.Services.AddScoped<ProductsRepository>();
 builder.Services.AddScoped<ProductsService>();

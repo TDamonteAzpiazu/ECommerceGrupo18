@@ -8,10 +8,14 @@ namespace Products.API.Services
     public class ProductsService
     {
         private readonly ProductsRepository _repository;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
 
-        public ProductsService(ProductsRepository repository)
+        public ProductsService(ProductsRepository repository, IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _repository = repository;
+            _httpClientFactory = httpClientFactory;
+            _config = config;
         }
 
         public async Task<IEnumerable<ProductResponse>> GetAllAsync(string? categoria, string? nombre)
@@ -86,7 +90,13 @@ namespace Products.API.Services
             if (existing == null)
                 throw new NotFoundException("PRD-001", "Producto no encontrado.");
 
-            // para el PRD-004 necesito verificar ordenes, cuando completemos el modulo Orders, vuelvo acá
+            var client = _httpClientFactory.CreateClient();
+            var ordersUrl = _config["Services:OrdersAPI"];
+            var response = await client.GetAsync($"{ordersUrl}/api/orders/product/{id}/active");
+            var hasActiveOrders = await response.Content.ReadFromJsonAsync<bool>();
+
+            if (hasActiveOrders)
+                throw new BusinessRuleException("PRD-004", "El producto tiene órdenes activas y no puede eliminarse.");
 
             var deleted = await _repository.DeleteAsync(id);
             if (!deleted)
@@ -103,5 +113,13 @@ namespace Products.API.Services
             Categoria = product.Categoria,
             FechaCreacion = product.FechaCreacion
         };
+
+        public async Task UpdateStockAsync(Guid id, int nuevoStock)
+        {
+            var existing = await _repository.GetByIdAsync(id);
+            if (existing == null)
+                throw new NotFoundException("PRD-001", "Producto no encontrado.");
+            await _repository.UpdateStockAsync(id, nuevoStock);
+        }
     }
 }

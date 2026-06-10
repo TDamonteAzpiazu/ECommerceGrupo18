@@ -58,5 +58,14 @@ namespace Orders.API.Controllers
             var result = await _service.UpdateStatusAsync(id, request);
             return Ok(result);
         }
+
+        [HttpGet("product/{productoId}/active")]
+        [ProducesResponseType(typeof(bool), 200)]
+        [ProducesResponseType(500)]
+        public async Task<IActionResult> HasActiveOrders(Guid productoId)
+        {
+            var result = await _service.HasActiveOrdersForProductAsync(productoId);
+            return Ok(result);
+        }
     }
 }
