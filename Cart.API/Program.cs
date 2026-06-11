@@ -1,4 +1,5 @@
 using Cart.API.ExceptionHandlers;
+using Cart.API.HealthChecks;
 using Cart.API.Repository;
 using Cart.API.Services;
 using Serilog;
@@ -45,6 +46,16 @@ builder.Services.AddExceptionHandler<BusinessRuleExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+builder.Services.AddHealthChecks()
+    .AddCheck<SqliteHealthCheck>("sqlite-db", tags: new[] { "database" })
+    .AddCheck<ApiStatusCheck>("api-status", tags: new[] { "api" });
+
+builder.Services.AddHealthChecksUI(setup =>
+{
+    setup.SetEvaluationTimeInSeconds(600);
+    setup.AddHealthCheckEndpoint("Cart.API", "/health");
+}).AddInMemoryStorage();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -62,6 +73,24 @@ app.UseSerilogRequestLogging(options =>
 });
 
 app.UseExceptionHandler();
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse
+});
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("database"),
+    ResponseWriter = HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("api"),
+    ResponseWriter = HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse
+});
+app.MapHealthChecksUI(setup => setup.UIPath = "/health-ui");
+
 app.UseHttpsRedirection();
 app.MapControllers();
 Console.WriteLine("Swagger Cart: https://localhost:7150/swagger");
