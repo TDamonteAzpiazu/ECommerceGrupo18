@@ -13,7 +13,8 @@ namespace Products.API.ExceptionHandlers
 
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
-            _logger.LogError(exception, "Error inesperado");
+            var correlationId = context.Items["X-Correlation-Id"]?.ToString();
+            _logger.LogError(exception, "Error inesperado: {CorrelationId}", correlationId);
 
             context.Response.StatusCode = 500;
             await context.Response.WriteAsJsonAsync(new
@@ -24,7 +25,8 @@ namespace Products.API.ExceptionHandlers
                 detail = "Ocurrió un error inesperado.",
                 instance = context.Request.Path.Value,
                 errorCode = "PRD-005",
-                errorMessage = "Error interno al procesar el producto."
+                errorMessage = "Error interno al procesar el producto.",
+                correlationId
             }, cancellationToken);
             return true;
         }

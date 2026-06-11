@@ -27,7 +27,7 @@ Log.Logger = new LoggerConfiguration()
         })
         .WriteTo.File(
             path: "logs/audit.log",
-            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {RequestMethod} | {RequestPath} | {StatusCode}{NewLine}",
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {Level:u3} | Products.API | {RequestMethod} | {RequestPath} | {StatusCode} | {Elapsed:0}ms | {CorrelationId}{NewLine}",
             rollingInterval: RollingInterval.Day))
     .CreateLogger();
 
@@ -75,6 +75,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<Products.API.Middleware.CorrelationIdMiddleware>();
 
 app.UseSerilogRequestLogging(options =>
 {
