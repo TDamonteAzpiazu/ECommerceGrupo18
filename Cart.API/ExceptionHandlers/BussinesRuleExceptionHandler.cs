@@ -5,9 +5,19 @@ namespace Cart.API.ExceptionHandlers
 {
     public class BusinessRuleExceptionHandler : IExceptionHandler
     {
+        private readonly ILogger<BusinessRuleExceptionHandler> _logger;
+
+        public BusinessRuleExceptionHandler(ILogger<BusinessRuleExceptionHandler> logger)
+        {
+            _logger = logger;
+        }
+
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
             if (exception is not BusinessRuleException ex) return false;
+
+            var correlationId = context.Items["X-Correlation-Id"]?.ToString();
+            _logger.LogWarning("Error de negocio: {ErrorCode} - {Message} | CorrelationId: {CorrelationId}", ex.ErrorCode, ex.Message, correlationId);
 
             context.Response.StatusCode = ex.ErrorCode switch
             {
@@ -36,7 +46,8 @@ namespace Cart.API.ExceptionHandlers
                 },
                 instance = context.Request.Path.Value,
                 errorCode = ex.ErrorCode,
-                errorMessage = ex.Message
+                errorMessage = ex.Message,
+                correlationId
             }, cancellationToken);
             return true;
         }

@@ -27,7 +27,7 @@ Log.Logger = new LoggerConfiguration()
         })
         .WriteTo.File(
             path: "logs/audit.log",
-            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {RequestMethod} | {RequestPath} | {StatusCode}{NewLine}",
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {Level:u3} | Products.API | {RequestMethod} | {RequestPath} | {StatusCode} | {Elapsed:0}ms | {CorrelationId}{NewLine}",
             rollingInterval: RollingInterval.Day))
     .CreateLogger();
 
@@ -36,7 +36,20 @@ builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Products API",
+        Version = "v1",
+        Description = "API para gestión de productos del eCommerce"
+    });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 // HttpClient para comunicación entre servicios
 builder.Services.AddHttpClient();
@@ -75,6 +88,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<Products.API.Middleware.CorrelationIdMiddleware>();
 
 app.UseSerilogRequestLogging(options =>
 {

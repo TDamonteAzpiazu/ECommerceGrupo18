@@ -1,5 +1,7 @@
 using Orders.API.ExceptionHandlers;
 using Orders.API.HealthChecks;
+using Orders.API.Http;
+using Orders.API.Middleware;
 using Orders.API.Repository;
 using Orders.API.Services;
 using Serilog;
@@ -26,7 +28,7 @@ Log.Logger = new LoggerConfiguration()
         })
         .WriteTo.File(
             path: "logs/audit.log",
-            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {RequestMethod} | {RequestPath} | {StatusCode}{NewLine}",
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {Level:u3} | Orders.API | {RequestMethod} | {RequestPath} | {StatusCode} | {Elapsed:0}ms | {CorrelationId}{NewLine}",
             rollingInterval: RollingInterval.Day))
     .CreateLogger();
 
@@ -35,9 +37,25 @@ builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-builder.Services.AddHttpClient();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Orders API",
+        Version = "v1",
+        Description = "API para gestión de órdenes del eCommerce"
+    });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient("default")
+    .AddHttpMessageHandler<CorrelationIdHandler>(); 
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<OrderService>();
 
@@ -64,6 +82,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging(options =>
 {
     options.GetLevel = (httpContext, _, ex) =>
@@ -73,6 +92,7 @@ app.UseSerilogRequestLogging(options =>
 });
 
 app.UseExceptionHandler();
+app.UseHttpsRedirection();
 
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
@@ -83,7 +103,6 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
     Predicate = check => check.Tags.Contains("database"),
     ResponseWriter = HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse
 });
-
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("api"),
@@ -91,7 +110,6 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 });
 app.MapHealthChecksUI(setup => setup.UIPath = "/health-ui");
 
-app.UseHttpsRedirection();
 app.MapControllers();
 Console.WriteLine("Swagger Orders: https://localhost:7163/swagger");
 app.Run();

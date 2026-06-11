@@ -39,7 +39,7 @@ namespace Orders.API.Services
             if (request.Items == null || request.Items.Count == 0)
                 throw new BusinessRuleException("ORD-002", "Los datos de la orden son inválidos.");
 
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("default");
 
             // Validar que el usuario existe
             var usersUrl = _config["Services:UsersAPI"];
@@ -117,7 +117,7 @@ namespace Orders.API.Services
                 throw new BusinessRuleException("ORD-006",
                     $"Una orden en estado '{existing.Estado}' no puede volver a '{request.Estado}'.");
 
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("default");
             var productsUrl = _config["Services:ProductsAPI"];
 
             // Descontar stock al confirmar

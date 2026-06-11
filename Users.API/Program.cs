@@ -1,9 +1,10 @@
-using Serilog;
-using Serilog.Events;
 using Users.API.ExceptionHandlers;
 using Users.API.HealthChecks;
+using Users.API.Middleware;
 using Users.API.Repository;
 using Users.API.Services;
+using Serilog;
+using Serilog.Events;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -26,7 +27,7 @@ Log.Logger = new LoggerConfiguration()
         })
         .WriteTo.File(
             path: "logs/audit.log",
-            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {RequestMethod} | {RequestPath} | {StatusCode}{NewLine}",
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} | {Level:u3} | Users.API | {RequestMethod} | {RequestPath} | {StatusCode} | {Elapsed:0}ms | {CorrelationId}{NewLine}",
             rollingInterval: RollingInterval.Day))
     .CreateLogger();
 
@@ -35,7 +36,20 @@ builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Users API",
+        Version = "v1",
+        Description = "API para gestión de usuarios del eCommerce"
+    });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<UserService>();
@@ -63,6 +77,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging(options =>
 {
     options.GetLevel = (httpContext, _, ex) =>
@@ -72,6 +87,7 @@ app.UseSerilogRequestLogging(options =>
 });
 
 app.UseExceptionHandler();
+app.UseHttpsRedirection();
 
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
@@ -89,7 +105,6 @@ app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthC
 });
 app.MapHealthChecksUI(setup => setup.UIPath = "/health-ui");
 
-app.UseHttpsRedirection();
 app.MapControllers();
 Console.WriteLine("Swagger Users: https://localhost:7142/swagger");
 app.Run();

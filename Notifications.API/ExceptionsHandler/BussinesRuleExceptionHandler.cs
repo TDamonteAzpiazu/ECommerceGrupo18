@@ -5,15 +5,21 @@ namespace Notifications.API.ExceptionHandlers
 {
     public class BusinessRuleExceptionHandler : IExceptionHandler
     {
+        private readonly ILogger<BusinessRuleExceptionHandler> _logger;
+
+        public BusinessRuleExceptionHandler(ILogger<BusinessRuleExceptionHandler> logger)
+        {
+            _logger = logger;
+        }
+
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
             if (exception is not BusinessRuleException ex) return false;
 
-            context.Response.StatusCode = ex.ErrorCode switch
-            {
-                "NTF-002" => 400,
-                _ => 400
-            };
+            var correlationId = context.Items["X-Correlation-Id"]?.ToString();
+            _logger.LogWarning("Error de negocio: {ErrorCode} - {Message} | CorrelationId: {CorrelationId}", ex.ErrorCode, ex.Message, correlationId);
+
+            context.Response.StatusCode = 400;
 
             await context.Response.WriteAsJsonAsync(new
             {
@@ -23,7 +29,8 @@ namespace Notifications.API.ExceptionHandlers
                 detail = "La solicitud no es válida.",
                 instance = context.Request.Path.Value,
                 errorCode = ex.ErrorCode,
-                errorMessage = ex.Message
+                errorMessage = ex.Message,
+                correlationId
             }, cancellationToken);
             return true;
         }

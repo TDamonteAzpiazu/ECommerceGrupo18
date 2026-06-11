@@ -5,9 +5,19 @@ namespace Users.API.ExceptionHandlers
 {
     public class BusinessRuleExceptionHandler : IExceptionHandler
     {
+        private readonly ILogger<BusinessRuleExceptionHandler> _logger;
+
+        public BusinessRuleExceptionHandler(ILogger<BusinessRuleExceptionHandler> logger)
+        {
+            _logger = logger;
+        }
+
         public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
         {
             if (exception is not BusinessRuleException ex) return false;
+
+            var correlationId = context.Items["X-Correlation-Id"]?.ToString();
+            _logger.LogWarning("Error de negocio: {ErrorCode} - {Message} | CorrelationId: {CorrelationId}", ex.ErrorCode, ex.Message, correlationId);
 
             context.Response.StatusCode = ex.ErrorCode switch
             {
@@ -15,36 +25,40 @@ namespace Users.API.ExceptionHandlers
                 "USR-004" => 403,
                 "USR-005" => 403,
                 "USR-001" => 409,
-                 _ => 400
+                _ => 400
             };
 
             await context.Response.WriteAsJsonAsync(new
             {
-                type = context.Response.StatusCode switch
+                type = ex.ErrorCode switch
                 {
-                    401 => "https://tools.ietf.org/html/rfc7235#section-3.1",
-                    403 => "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-                    409 => "https://tools.ietf.org/html/rfc7231#section-6.5.9",
+                    "USR-003" => "https://tools.ietf.org/html/rfc7235#section-3.1",
+                    "USR-004" => "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+                    "USR-005" => "https://tools.ietf.org/html/rfc7231#section-6.5.3",
+                    "USR-001" => "https://tools.ietf.org/html/rfc7231#section-6.5.9",
                     _ => "https://tools.ietf.org/html/rfc7231#section-6.5.1"
                 },
-                title = context.Response.StatusCode switch
+                title = ex.ErrorCode switch
                 {
-                    401 => "Unauthorized",
-                    403 => "Forbidden",
-                    409 => "Conflict",
-                     _ => "Bad Request"
+                    "USR-003" => "Unauthorized",
+                    "USR-004" => "Forbidden",
+                    "USR-005" => "Forbidden",
+                    "USR-001" => "Conflict",
+                    _ => "Bad Request"
                 },
                 status = context.Response.StatusCode,
-                detail = context.Response.StatusCode switch
+                detail = ex.ErrorCode switch
                 {
-                    401 => "Las credenciales son incorrectas.",
-                    403 => "El acceso está prohibido.",
-                    409 => "Ya existe un recurso con esos datos.",
+                    "USR-003" => "Las credenciales no son válidas.",
+                    "USR-004" => "El acceso está prohibido.",
+                    "USR-005" => "El acceso está prohibido.",
+                    "USR-001" => "Ya existe un recurso con esos datos.",
                     _ => "La solicitud no es válida."
                 },
                 instance = context.Request.Path.Value,
                 errorCode = ex.ErrorCode,
-                errorMessage = ex.Message
+                errorMessage = ex.Message,
+                correlationId
             }, cancellationToken);
             return true;
         }
