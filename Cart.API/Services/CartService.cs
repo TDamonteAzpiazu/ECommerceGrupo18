@@ -33,7 +33,7 @@ namespace Cart.API.Services
                 throw new BusinessRuleException("CRT-004", "Cantidad inválida.");
 
             // Verificar que el producto existe y tiene stock
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("default");
             var productsUrl = _config["Services:ProductsAPI"];
             var productResponse = await client.GetAsync($"{productsUrl}/api/products/{request.ProductoId}");
 
@@ -68,7 +68,7 @@ namespace Cart.API.Services
                 throw new NotFoundException("CRT-002", "Producto no encontrado.");
 
             // Verificar stock
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("default");
             var productsUrl = _config["Services:ProductsAPI"];
             var productResponse = await client.GetAsync($"{productsUrl}/api/products/{productoId}");
 

@@ -39,7 +39,7 @@ namespace Notifications.API.Services
                 throw new BusinessRuleException("NTF-002", "Los datos de la notificación son inválidos.");
 
             // Validar que el usuario existe
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("default");
             var usersUrl = _config["Services:UsersAPI"];
             var userResponse = await client.GetAsync($"{usersUrl}/api/users/{request.UsuarioId}");
             if (!userResponse.IsSuccessStatusCode)

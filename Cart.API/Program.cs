@@ -1,5 +1,6 @@
 using Cart.API.ExceptionHandlers;
 using Cart.API.HealthChecks;
+using Cart.API.Http;
 using Cart.API.Middleware;
 using Cart.API.Repository;
 using Cart.API.Services;
@@ -38,7 +39,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient("default")
+    .AddHttpMessageHandler<CorrelationIdHandler>();
+
 builder.Services.AddScoped<CartRepository>();
 builder.Services.AddScoped<CartService>();
 

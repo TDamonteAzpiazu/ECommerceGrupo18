@@ -1,5 +1,6 @@
 using Orders.API.ExceptionHandlers;
 using Orders.API.HealthChecks;
+using Orders.API.Http;
 using Orders.API.Middleware;
 using Orders.API.Repository;
 using Orders.API.Services;
@@ -38,7 +39,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient("default")
+    .AddHttpMessageHandler<CorrelationIdHandler>(); 
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddScoped<OrderService>();
 

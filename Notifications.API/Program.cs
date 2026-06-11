@@ -1,5 +1,6 @@
 using Notifications.API.ExceptionHandlers;
 using Notifications.API.HealthChecks;
+using Notifications.API.Http;
 using Notifications.API.Middleware;
 using Notifications.API.Repository;
 using Notifications.API.Services;
@@ -38,7 +39,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient("default")
+    .AddHttpMessageHandler<CorrelationIdHandler>();
+
 builder.Services.AddScoped<NotificationRepository>();
 builder.Services.AddScoped<NotificationService>();
 
