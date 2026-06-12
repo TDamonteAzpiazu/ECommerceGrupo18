@@ -1,4 +1,5 @@
 <Solution>
+  <Folder Name="/database/" />
   <Project Path="Cart.API/Cart.API.csproj" Id="97174543-0081-440d-8f77-b2b87d68cf8f" />
   <Project Path="Notifications.API/Notifications.API.csproj" Id="51c8ce5a-ce83-453f-8d1a-526f31471153" />
   <Project Path="Orders.API/Orders.API.csproj" Id="250d4244-4cce-416d-a2c0-bd1cb5e8a136" />
